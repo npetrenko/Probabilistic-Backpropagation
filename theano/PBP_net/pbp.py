@@ -15,7 +15,7 @@ import prior
 
 class PBP:
 
-    def __init__(self, layer_sizes, mean_y_train, std_y_train):
+    def __init__(self, layer_sizes, mean_y_train, std_y_train, task):
 
         var_targets = 1
         self.std_y_train = std_y_train
@@ -29,7 +29,7 @@ class PBP:
 
         params = self.prior.get_initial_params()
         self.network = network.Network(params[ 'm_w' ], params[ 'v_w' ],
-            params[ 'a' ], params[ 'b' ])
+            params[ 'a' ], params[ 'b' ], task = task)
 
         # We create the input and output variables in theano
 

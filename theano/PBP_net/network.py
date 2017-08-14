@@ -9,7 +9,9 @@ import network_layer
 
 class Network:
 
-    def __init__(self, m_w_init, v_w_init, a_init, b_init):
+    def __init__(self, m_w_init, v_w_init, a_init, b_init, task):
+        
+        self.task = task
 
         # We create the different layers
 
@@ -64,11 +66,19 @@ class Network:
         v_final = v + self.b / (self.a - 1)
         v_final1 = v + self.b / self.a
         v_final2 = v + self.b / (self.a + 1)
-
-        logZ = -0.5 * (T.log(v_final) + (y - m)**2 / v_final)
-        logZ1 = -0.5 * (T.log(v_final1) + (y - m)**2 / v_final1)
-        logZ2 = -0.5 * (T.log(v_final2) + (y - m)**2 / v_final2)
-
+        
+        if self.task == 'reg':
+            logZ = -0.5 * (T.log(v_final) + (y - m)**2 / v_final)
+            logZ1 = -0.5 * (T.log(v_final1) + (y - m)**2 / v_final1)
+            logZ2 = -0.5 * (T.log(v_final2) + (y - m)**2 / v_final2)
+        else:
+            def n_cdf(x):
+                return 0.5 * (1.0 + T.erf(x / T.sqrt(2.0)))
+            
+            logZ = T.log(n_cdf(2*(y-0.5)*m/T.sqrt(1 + v_final)))
+            logZ1 = T.log(n_cdf(2*(y-0.5)*m/T.sqrt(1 + v_final1)))
+            logZ2 = T.log(n_cdf(2*(y-0.5)*m/T.sqrt(1 + v_final2)))
+            
         return (logZ, logZ1, logZ2)
 
     def generate_updates(self, logZ, logZ1, logZ2):

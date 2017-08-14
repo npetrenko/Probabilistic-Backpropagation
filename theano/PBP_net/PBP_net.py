@@ -7,10 +7,13 @@ import gzip
 
 import pbp
 
+import theano as th
+from theano import tensor as T
+
 class PBP_net:
 
     def __init__(self, X_train, y_train, n_hidden, n_epochs = 40,
-        normalize = False):
+        normalize = False, task = 'reg'):
 
         """
             Constructor for the class implementing a Bayesian neural network
@@ -29,8 +32,17 @@ class PBP_net:
                                 example formed by binary features (a
                                 fingerprint). In that case we do not recommend
                                 to normalize the features.
+            @param task         either "clf" or "reg"(default)
         """
-
+        assert task in ['reg', 'clf']
+        self.task = task
+        
+        # function for transorfming logits into probability
+        t = T.vector(dtype='float64')
+        def n_cdf(x):
+            return 0.5 * (1.0 + T.erf(x / T.sqrt(2.0)))
+        self.erf = th.function([t], n_cdf(t))
+        
         # We normalize the training data to have zero mean and unit standard
         # deviation in the training set if necessary
 
@@ -44,9 +56,13 @@ class PBP_net:
 
         X_train = (X_train - np.full(X_train.shape, self.mean_X_train)) / \
             np.full(X_train.shape, self.std_X_train)
-
-        self.mean_y_train = np.mean(y_train)
-        self.std_y_train = np.std(y_train)
+        
+        if task == 'reg':
+            self.mean_y_train = np.mean(y_train)
+            self.std_y_train = np.std(y_train)
+        else:
+            self.mean_y_train = 0.
+            self.std_y_train = 1.
 
         y_train_normalized = (y_train - self.mean_y_train) / self.std_y_train
 
@@ -55,7 +71,7 @@ class PBP_net:
         n_units_per_layer = \
             np.concatenate(([ X_train.shape[ 1 ] ], n_hidden, [ 1 ]))
         self.pbp_instance = \
-            pbp.PBP(n_units_per_layer, self.mean_y_train, self.std_y_train)
+            pbp.PBP(n_units_per_layer, self.mean_y_train, self.std_y_train, task=task)
 
         # We iterate the learning process
 
@@ -98,7 +114,10 @@ class PBP_net:
             @return v_noise The estimated variance for the additive noise.
 
         """
-
+        
+        if self.task == 'clf':
+            raise NotImplementedError('Can only predict on samples for classification task')
+            
         X_test = np.array(X_test, ndmin = 2)
 
         # We normalize the test set
@@ -138,6 +157,9 @@ class PBP_net:
         # of the test data
 
         o = self.pbp_instance.get_deterministic_output(X_test)
+        
+        if self.task == 'clf':
+            return self.erf(o)
 
         # We are done!
 
